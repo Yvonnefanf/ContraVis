@@ -33,7 +33,9 @@ def evaluate_high_dimesion_trans_knn_preserving(data, data_transformed,k=15):
         consistency_ratio = intersection / k
         consistency_ratios.append(consistency_ratio)
         
-    # Step 5: 汇总评估结果
+    
     average_consistency_ratio = np.mean(consistency_ratios)
     
     return average_consistency_ratio
+
+

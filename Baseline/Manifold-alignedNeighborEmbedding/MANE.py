@@ -136,7 +136,6 @@ def make_epochs_per_sample(weights, n_epochs):
 
 
 
-
 @numba.jit(nopython=True)
 def clip(x,val=4.0):
 
@@ -163,7 +162,6 @@ def update_attraction(x, y, a, b, dim, lr, P):
 
         x[0,d] -= mv
         y[0,d] += mv
-        
     return
 
 @numba.jit(nopython=True)
@@ -174,7 +172,6 @@ def update_repulsion(x, y, a, b, dim, lr, P,repulsion_strength=1.0):
         grad_coeff = 2 * repulsion_strength * b / ( (0.001+dist) * (1.0 + a * dist**b) )
     else:
         grad_coeff = 0
-
 
     for d in range(dim):
         #if grad_coeff > 0.0:
@@ -238,10 +235,6 @@ def one_step_in_a_set(emA, emH, idx, rows, columns, a, b, dim,
         epoch_of_next_negative_sample[idx] += (
                 n_neg_samples * epochs_per_negative_sample[idx]
             )
-            
-            
-            
-    
     return 
 
 @numba.jit(nopython=True, parallel=True)
