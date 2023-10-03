@@ -1,6 +1,7 @@
 from sklearn.manifold import trustworthiness 
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
+from pynndescent import NNDescent
 
 def evaluate_proj_nn_perseverance_trustworthiness(data, embedding, n_neighbors, metric="euclidean"):
     """
@@ -37,5 +38,45 @@ def evaluate_high_dimesion_trans_knn_preserving(data, data_transformed,k=15):
     average_consistency_ratio = np.mean(consistency_ratios)
     
     return average_consistency_ratio
+
+def evaluate_proj_nn_perseverance_knn(data, embedding, n_neighbors, metric="euclidean"):
+    """
+    evaluate projection function, nn preserving property using knn algorithm
+    :param data: ndarray, high dimensional representations
+    :param embedding: ndarray, low dimensional representations
+    :param n_neighbors: int, the number of neighbors
+    :param metric: str, by default "euclidean"
+    :return nn property: float, nn preserving property
+    """
+    n_trees = 5 + int(round((data.shape[0]) ** 0.5 / 20.0))
+    n_iters = max(5, int(round(np.log2(data.shape[0]))))
+    # get nearest neighbors
+    nnd = NNDescent(
+        data,
+        n_neighbors=n_neighbors,
+        metric=metric,
+        n_trees=n_trees,
+        n_iters=n_iters,
+        max_candidates=60,
+        verbose=True
+    )
+    high_ind, _ = nnd.neighbor_graph
+    nnd = NNDescent(
+        embedding,
+        n_neighbors=n_neighbors,
+        metric=metric,
+        n_trees=n_trees,
+        n_iters=n_iters,
+        max_candidates=60,
+        verbose=True
+    )
+    low_ind, _ = nnd.neighbor_graph
+
+    border_pres = np.zeros(len(data))
+    for i in range(len(data)):
+        border_pres[i] = len(np.intersect1d(high_ind[i], low_ind[i]))
+
+    # return border_pres.mean(), border_pres.max(), border_pres.min()
+    return border_pres.mean()
 
 
