@@ -12,7 +12,9 @@ import argparse
 from torch.utils.data import DataLoader
 from torch.utils.data import WeightedRandomSampler
 from umap.umap_ import find_ab_params
-from contrast.transfomration import *
+
+from contrast.transfomration import TransformationTrainer
+
 
 from singleVis.custom_weighted_random_sampler import CustomWeightedRandomSampler
 from singleVis.SingleVisualizationModel import VisModel
@@ -159,9 +161,15 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=.1)
     # Define Edge dataset
     t0 = time.time()
+    
+
+    #### run transformation model
     tar_data = tar_data_provider.train_representation(EPOCH_START)
     tar_data = tar_data.reshape(tar_data.shape[0],tar_data.shape[1])
-    trans_model,tar_mapped,ref_reconstructed  = transformation_train(data_provider.train_representation(EPOCH_START),tar_data)
+    trans_trainer = TransformationTrainer(data_provider.train_representation(EPOCH_START),tar_data, DEVICE)
+    tarns_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train()
+
+    ##### build spatial graph
     spatial_cons = SpitalEdgeForContrastConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_mapped,tar_data_provider)
     edge_to, edge_from, probs, feature_vectors, attention = spatial_cons.construct()
     t1 = time.time()
