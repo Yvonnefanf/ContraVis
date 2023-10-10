@@ -105,9 +105,8 @@ class TransformationTrainer():
         _, indices = nbrs.kneighbors(data)
         return indices[:, 1:] # 去掉第一个邻居，因为它是数据点自己
 
-    def similarity_loss(self, mapped_data, original_data):
+    def similarity_loss(self, mapped_data, original_neighbors):
         mapped_neighbors = self.compute_neighbors(mapped_data.cpu().detach().numpy())
-        original_neighbors = self.compute_neighbors(original_data.cpu().detach().numpy())
 
         # 计算匹配度，这里使用集合的交集大小
         match_score = 0
@@ -115,10 +114,11 @@ class TransformationTrainer():
             match_score += len(set(m_neigh) & set(o_neigh))
         
         # 最大匹配度是15，因此损失是15减去实际匹配度
-        loss = (15 * len(original_data) - match_score) / len(original_data)
+        loss = (15 * len(mapped_data) - match_score) / len(mapped_data)
         return torch.tensor(loss, device=self.device)
     
     def transformation_train_advanced(self,lambda_translation=0.5, lambda_similarity=1.0,num_epochs=100,lr=0.001,sample_size=1000):
+        original_neighbors = self.compute_neighbors(self.tar_data)
     
         criterion = nn.MSELoss()
         optimizer = optim.Adam(self.model.parameters(), lr=lr)
@@ -127,7 +127,31 @@ class TransformationTrainer():
         ref_tensor = torch.tensor(self.ref_data, dtype=torch.float32).cuda()
         tar_tensor = tar_tensor.to(self.device)
         ref_tensor = ref_tensor.to(self.device)
-        # Train the autoencoder
+
+         # Train the autoencoder
+        for epoch in range(200):
+            self.model.train()
+
+            optimizer.zero_grad()
+
+            # Forward pass
+            latent_representation = self.model.encoder(tar_tensor)
+            outputs = self.model.decoder(latent_representation)
+
+            # Compute the two losses
+            reconstruction_loss = criterion(outputs, tar_tensor)
+            translation_loss = criterion(latent_representation, ref_tensor)
+
+            # Combine the losses
+            loss = reconstruction_loss + lambda_translation * translation_loss
+            # Backward pass and optimization
+            loss.backward()
+            optimizer.step()
+
+            if epoch % 20 == 0:
+                print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}")
+
+        # Train the adv autoencoder
         for epoch in range(num_epochs):
             self.model.train()
 
@@ -140,7 +164,7 @@ class TransformationTrainer():
             reconstruction_loss = criterion(outputs, tar_tensor)
             translation_loss = criterion(latent_representation, ref_tensor)
             # neighbor_loss = self.similarity_loss(latent_representation)
-            neighbor_loss = self.similarity_loss(latent_representation, tar_tensor)
+            neighbor_loss = self.similarity_loss(latent_representation, original_neighbors)
 
             # Combine the losses
             loss = reconstruction_loss + lambda_translation * translation_loss + lambda_similarity * neighbor_loss
@@ -149,8 +173,8 @@ class TransformationTrainer():
             loss.backward()
             optimizer.step()
 
-            if epoch % 20 == 0:
-                print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}")
+            # if epoch % 20 == 0:
+            print(f"Epoch [{epoch + 1}/{num_epochs}],reconstruction_loss:{reconstruction_loss.item():.4f},translation_loss:{translation_loss.item():.4f},neighbor_loss:{neighbor_loss.item():.4f}, Loss: {loss.item():.4f}")
 
         # To get the mapped version of tar
         tar_mapped = self.model.encoder(tar_tensor).cpu().detach().numpy()
