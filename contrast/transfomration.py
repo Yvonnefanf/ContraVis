@@ -43,39 +43,22 @@ class TransformationTrainer():
         self.model = Autoencoder().to(device)
        
 
-    def random_sample(self, tensor, sample_size):
+    def random_sample(self, array, sample_size):
         """
-        Randomly sample a subset from a tensor.
+        Randomly sample a subset from a numpy array.
 
         Args:
-        - tensor (torch.Tensor): The input tensor to sample from.
+        - array (numpy.ndarray): The input array to sample from.
         - sample_size (int): The size of the random sample.
 
         Returns:
-        - torch.Tensor: A subset of the input tensor.
+        - numpy.ndarray: A subset of the input array.
         """
-        indices = torch.randperm(tensor.size(0))[:sample_size]
-        return tensor[indices]
+        indices = np.random.permutation(array.shape[0])[:sample_size]
+        return array[indices]
 
     
-    def compute_similarity_matrix(self, data, sample_size=None):
-        if sample_size:
-            data = self.random_sample(data, sample_size)
-        
-        nbrs = NearestNeighbors(n_neighbors=16, algorithm='auto').fit(data)
-        _, indices = nbrs.kneighbors(data)
-        return torch.tensor(indices, device=self.device)
-    
-    def similarity_loss(self, mapped_data, sample_size=None):
-        # Here, we also consider a subset for the mapped_data when computing the loss
-        if sample_size:
-            mapped_data = self.random_sample(mapped_data, sample_size)
-        
-        mapped_nearest = torch.argsort(torch.cdist(mapped_data, mapped_data, p=2), dim=1)[:, 1:16]
-        original_nearest = self.compute_similarity_matrix(mapped_data.cpu().detach().numpy(), sample_size)
-        
-        loss = nn.MSELoss()(mapped_nearest.float(), original_nearest.float())
-        return loss
+
     
     def transformation_train(self,lambda_translation=0.5,num_epochs = 100,lr=0.001):
         criterion = nn.MSELoss()
@@ -116,8 +99,27 @@ class TransformationTrainer():
 
         return self.model, tar_mapped, ref_reconstructed
     
-    def transformation_train_advanced(self,lambda_translation=0.5, lambda_similarity=1.0,num_epochs = 200,lr=0.001,sample_size=1000):
-        self.similarity_matrix = self.compute_similarity_matrix(self.tar_data)
+
+    def compute_neighbors(self, data, n_neighbors=15):
+        nbrs = NearestNeighbors(n_neighbors=n_neighbors+1, algorithm='auto').fit(data) # 加1是因为第一个邻居是数据点自己
+        _, indices = nbrs.kneighbors(data)
+        return indices[:, 1:] # 去掉第一个邻居，因为它是数据点自己
+
+    def similarity_loss(self, mapped_data, original_data):
+        mapped_neighbors = self.compute_neighbors(mapped_data.cpu().detach().numpy())
+        original_neighbors = self.compute_neighbors(original_data.cpu().detach().numpy())
+
+        # 计算匹配度，这里使用集合的交集大小
+        match_score = 0
+        for m_neigh, o_neigh in zip(mapped_neighbors, original_neighbors):
+            match_score += len(set(m_neigh) & set(o_neigh))
+        
+        # 最大匹配度是15，因此损失是15减去实际匹配度
+        loss = (15 * len(original_data) - match_score) / len(original_data)
+        return torch.tensor(loss, device=self.device)
+    
+    def transformation_train_advanced(self,lambda_translation=0.5, lambda_similarity=1.0,num_epochs=100,lr=0.001,sample_size=1000):
+    
         criterion = nn.MSELoss()
         optimizer = optim.Adam(self.model.parameters(), lr=lr)
          # Assume tar_tensor and ref_tensor are your data in PyTorch tensor format
@@ -126,7 +128,6 @@ class TransformationTrainer():
         tar_tensor = tar_tensor.to(self.device)
         ref_tensor = ref_tensor.to(self.device)
         # Train the autoencoder
-        num_epochs = 200
         for epoch in range(num_epochs):
             self.model.train()
 
@@ -139,7 +140,7 @@ class TransformationTrainer():
             reconstruction_loss = criterion(outputs, tar_tensor)
             translation_loss = criterion(latent_representation, ref_tensor)
             # neighbor_loss = self.similarity_loss(latent_representation)
-            neighbor_loss = self.similarity_loss(latent_representation, sample_size)
+            neighbor_loss = self.similarity_loss(latent_representation, tar_tensor)
 
             # Combine the losses
             loss = reconstruction_loss + lambda_translation * translation_loss + lambda_similarity * neighbor_loss
