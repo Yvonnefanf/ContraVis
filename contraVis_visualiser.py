@@ -149,6 +149,19 @@ if not os.path.exists(save_dir):
 for i in range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD):
     vis.savefig(i, path=os.path.join(save_dir, "{}_{}_ref.png".format(DATASET, i)))
 
+saved_dir = os.path.join(data_provider.model_path, "Epoch_{}".format(EPOCH_START))
+transed_model = torch.load(os.path.join(saved_dir,'trans_model.m' )).to(DEVICE)
+
+
+from singleVis.visualizer_for_tar import visualizer
+now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time())) 
+vis = visualizer(data_provider, tar_data_provider, transed_model, projector, 200,DEVICE, "tab10")
+save_dir = os.path.join(data_provider.content_path, "contraImg")
+if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+for i in range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD):
+    vis.savefig(i, path=os.path.join(save_dir, "{}_{}_tar.png".format(DATASET, i)))
+
     
 ########################################################################################################################
 #                                                       EVALUATION                                                     #
