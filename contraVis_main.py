@@ -167,7 +167,7 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     tar_data = tar_data_provider.train_representation(EPOCH_START)
     tar_data = tar_data.reshape(tar_data.shape[0],tar_data.shape[1])
     trans_trainer = TransformationTrainer(data_provider.train_representation(EPOCH_START),tar_data, DEVICE)
-    tarns_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train()
+    trans_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train(num_epochs=200)
 
     ##### build spatial graph
     spatial_cons = SpitalEdgeForContrastConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_mapped,tar_data_provider)
