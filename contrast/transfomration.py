@@ -108,16 +108,16 @@ class TransformationTrainer():
     def similarity_loss(self, mapped_data, original_neighbors):
         mapped_neighbors = self.compute_neighbors(mapped_data.cpu().detach().numpy())
 
-        # 计算匹配度，这里使用集合的交集大小
+        # calculate the match score
         match_score = 0
         for m_neigh, o_neigh in zip(mapped_neighbors, original_neighbors):
             match_score += len(set(m_neigh) & set(o_neigh))
         
-        # 最大匹配度是15，因此损失是15减去实际匹配度
+        # most match is 15 
         loss = (15 * len(mapped_data) - match_score) / len(mapped_data)
         return torch.tensor(loss, device=self.device)
     
-    def transformation_train_advanced(self,lambda_translation=0.5, lambda_similarity=1.0,num_epochs=100,lr=0.001,sample_size=1000):
+    def transformation_train_advanced(self,lambda_translation=0.5, lambda_similarity=1.0,num_epochs=100,lr=0.001,base_epoch=50):
         original_neighbors = self.compute_neighbors(self.tar_data)
     
         criterion = nn.MSELoss()
@@ -129,7 +129,7 @@ class TransformationTrainer():
         ref_tensor = ref_tensor.to(self.device)
 
          # Train the autoencoder
-        for epoch in range(200):
+        for epoch in range(base_epoch):
             self.model.train()
 
             optimizer.zero_grad()

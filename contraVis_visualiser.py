@@ -14,6 +14,7 @@ from contrast.transfomration import *
 
 from singleVis.SingleVisualizationModel import VisModel
 from singleVis.losses import UmapLoss, ReconstructionLoss, SingleVisLoss
+
 from singleVis.data import NormalDataProvider
 
 
@@ -90,7 +91,7 @@ N_NEIGHBORS = VISUALIZATION_PARAMETER["N_NEIGHBORS"]
 PATIENT = VISUALIZATION_PARAMETER["PATIENT"]
 MAX_EPOCH = VISUALIZATION_PARAMETER["MAX_EPOCH"]
 
-VIS_MODEL_NAME = 'Contravis' ### saved_as 
+
 EVALUATION_NAME = VISUALIZATION_PARAMETER["EVALUATION_NAME"]
 
 # Define hyperparameters
@@ -144,7 +145,7 @@ for i in range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD):
     vis.savefig(i, path=os.path.join(save_dir, "{}_{}_ref.png".format(DATASET, i)))
 
 saved_dir = os.path.join(data_provider.model_path, "Epoch_{}".format(EPOCH_START))
-transed_model = torch.load(os.path.join(saved_dir,'trans_model.m' )).to(DEVICE)
+transed_model = torch.load(os.path.join(saved_dir,"{}_{}".format(strategy,'trans_model.m'))).to(DEVICE)
 
 
 from singleVis.visualizer_for_tar import visualizer
