@@ -48,7 +48,7 @@ TAE_NET = "resnet18"
 parser = argparse.ArgumentParser(description='Process hyperparameters...')
 parser.add_argument('--content_path', type=str,default=REF_PATH)
 parser.add_argument('--tar_path', type=str, default=TAR_PATH)
-parser.add_argument('--epoch', type=int,default=200)
+parser.add_argument('--epoch', type=int,default=100)
 # parser.add_argument('--epoch_end', type=int)
 parser.add_argument('--epoch_period', type=int,default=1)
 parser.add_argument('--preprocess', type=int,default=0)
@@ -168,7 +168,7 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     #### run transformation model
     tar_data = tar_data_provider.train_representation(EPOCH_START)
     tar_data = tar_data.reshape(tar_data.shape[0],tar_data.shape[1])
-    trans_trainer = TransformationTrainer(data_provider.train_representation(EPOCH_START),tar_data, DEVICE)
+    trans_trainer = TransformationTrainer(data_provider.train_representation(EPOCH_START),tar_data,data_provider,tar_data_provider,EPOCH_START,EPOCH_START, DEVICE)
     trans_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train(num_epochs=500)
 
     ##### build spatial graph

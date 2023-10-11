@@ -38,7 +38,7 @@ TAE_NET = "resnet18"
 parser = argparse.ArgumentParser(description='Process hyperparameters...')
 parser.add_argument('--content_path', type=str,default=REF_PATH)
 parser.add_argument('--tar_path', type=str, default=TAR_PATH)
-parser.add_argument('--epoch', type=int,default=200)
+parser.add_argument('--epoch', type=int,default=100)
 # parser.add_argument('--epoch_end', type=int)
 parser.add_argument('--epoch_period', type=int,default=1)
 parser.add_argument('--preprocess', type=int,default=0)

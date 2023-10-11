@@ -36,13 +36,18 @@ class Autoencoder(nn.Module):
         return x
     
 class TransformationTrainer():
-    def __init__(self,ref_data,tar_data,device) -> None:
+    def __init__(self,ref_data,tar_data,ref_provider,tar_provider,ref_epoch, tar_epoch,device) -> None:
         self.ref_data = ref_data
         self.tar_data = tar_data
+        self.ref_provider = ref_provider
+        self.tar_provider = tar_provider
+        self.ref_epoch = ref_epoch
+        self.tar_epoch= tar_epoch
         self.device = device
         self.model = Autoencoder().to(device)
-       
-
+        self.tar_pred = self.tar_provider.get_pred(self.tar_epoch, self.tar_data)
+        self.ref_pred = self.ref_provider.get_pred(self.ref_epoch, self.ref_data)
+    
     def random_sample(self, array, sample_size):
         """
         Randomly sample a subset from a numpy array.
@@ -55,15 +60,46 @@ class TransformationTrainer():
         - numpy.ndarray: A subset of the input array.
         """
         indices = np.random.permutation(array.shape[0])[:sample_size]
-        return array[indices]
+        return array[indices], indices
+    
+    def filter_diff(self):
+        diff_indicates = []
 
+        tar_pred = self.tar_pred.argmax(axis=1)
+        ref_pred = self.ref_pred.argmax(axis=1)
+        for i in range(len(tar_pred)):
+            if tar_pred[i] != ref_pred[i]:
+                diff_indicates.append(i)
+        return diff_indicates
+    
+    def euclidean_distance(self, vec1, vec2):
+        return np.linalg.norm(vec1 - vec2)
+    
+    def align_ref_data(self,sample_size=500):
+        
+        diff_indicates = self.filter_diff()
+        print("diff is", len(diff_indicates))
+        tar_pred = self.tar_pred
+        ref_pred = self.ref_pred
+        for i in diff_indicates:
+            # Randomly sample from ref_pred
+            sampled_ref_pred, sampled_indices = self.random_sample(ref_pred, sample_size)
+            # calculate the distance
+            # calculate the distance only with the sampled ref points
+            distances = [self.euclidean_distance(tar_pred[i], sampled_ref_pred[j]) for j in range(sample_size)]
+            # find the most similar point
+            similar_ref_index = np.argmin(distances)
+            # replace
+            self.ref_data[i] = self.ref_data[similar_ref_index]
     
 
     
     def transformation_train(self,lambda_translation=0.5,num_epochs = 100,lr=0.001):
         criterion = nn.MSELoss()
         optimizer = optim.Adam(self.model.parameters(), lr=lr)
-         # Assume tar_tensor and ref_tensor are your data in PyTorch tensor format
+        # Assume tar_tensor and ref_tensor are your data in PyTorch tensor format
+        self.align_ref_data()
+        print("finished aligned")
         tar_tensor = torch.tensor(self.tar_data, dtype=torch.float32).cuda() 
         ref_tensor = torch.tensor(self.ref_data, dtype=torch.float32).cuda()
         tar_tensor = tar_tensor.to(self.device)
