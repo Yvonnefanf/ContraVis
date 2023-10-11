@@ -7,6 +7,7 @@ import matplotlib as mpl
 import numpy as np
 import base64
 import torch
+import json
 
 class VisualizerAbstractClass(ABC):
     @abstractmethod
@@ -35,7 +36,7 @@ class VisualizerAbstractClass(ABC):
         pass
 
 class visualizer(VisualizerAbstractClass):
-    def __init__(self, data_provider, tar_data_provider,transform_model, projector, resolution, device, cmap='tab10'):
+    def __init__(self, data_provider, tar_data_provider,transform_model, projector, resolution, device, cmap='tab10',use_clean=False):
         self.data_provider = data_provider
         self.projector = projector
         self.cmap = plt.get_cmap(cmap)
@@ -45,6 +46,7 @@ class visualizer(VisualizerAbstractClass):
         self.tar_data_provider = tar_data_provider
         self.transform_model = transform_model
         self.device = device
+        self.use_clean = use_clean
 
     def _init_plot(self, only_img=False):
         '''
@@ -213,8 +215,13 @@ class visualizer(VisualizerAbstractClass):
         # params_str = 'res: %d'
         # desc = params_str % (self.resolution)
         # self.desc.set_text(desc)
+        
 
         train_labels = self.tar_data_provider.train_labels(epoch)
+        if self.use_clean:
+            with open(os.path.join(self.tar_data_provider.content_path, 'clean_label.json')) as f:
+                train_labels = json.load(f)
+                train_labels = np.array(train_labels)
         tar_data = self.tar_data_provider.train_representation(epoch)
         tar_data = tar_data.reshape(tar_data.shape[0],tar_data.shape[1])
         pred = self.tar_data_provider.get_pred(epoch, tar_data)

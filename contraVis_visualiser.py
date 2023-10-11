@@ -9,22 +9,15 @@ import time
 import numpy as np
 import argparse
 
-from torch.utils.data import DataLoader
-from torch.utils.data import WeightedRandomSampler
 from umap.umap_ import find_ab_params
 from contrast.transfomration import *
 
-from singleVis.custom_weighted_random_sampler import CustomWeightedRandomSampler
 from singleVis.SingleVisualizationModel import VisModel
-from singleVis.losses import UmapLoss, ReconstructionLoss, TemporalLoss, DVILoss, SingleVisLoss, DummyTemporalLoss
-from singleVis.edge_dataset import DVIDataHandler
-from singleVis.trainer import DVITrainer
+from singleVis.losses import UmapLoss, ReconstructionLoss, SingleVisLoss
 from singleVis.data import NormalDataProvider
-# from singleVis.spatial_edge_constructor import SingleEpochSpatialEdgeConstructor
-from singleVis.spatial_edge_constructor import SpitalEdgeForContrastConstructor
+
 
 from singleVis.projector import DVIProjector
-from singleVis.utils import find_neighbor_preserving_rate
 
 ########################################################################################################################
 #                                                      PARAMETERS                                                   #
@@ -32,9 +25,10 @@ from singleVis.utils import find_neighbor_preserving_rate
 """This serve as an example of DeepVisualInsight implementation in pytorch."""
 VIS_METHOD = "DVI" # DeepVisualInsight
 
-
-TAR_PATH = "/home/yifan/dataset/resnet18_with_dropout/pairflip/cifar10/0"
+TAR_PATH = "/home/yifan/experiments/backdoor/resnet18_CIFAR10/experiment10"
 REF_PATH = "/home/yifan/dataset/clean/pairflip/cifar10/0"
+
+TAE_NET = "resnet18"
 
 ########################################################################################################################
 #                                                     LOAD PARAMETERS                                                  #
@@ -110,7 +104,7 @@ net = eval("subject_model.{}()".format(NET))
 ########################################################################################################################
 # Define data_provider
 #TODO
-TAE_NET = "resnet18_with_dropout"
+
 tar_net = eval("subject_model.{}()".format(TAE_NET)) 
 TAR_CONTENT_PATH = args.tar_path
 data_provider = NormalDataProvider(CONTENT_PATH, net, EPOCH_START, EPOCH_END, EPOCH_PERIOD, device=DEVICE, epoch_name='Epoch',classes=CLASSES,verbose=1)
@@ -163,17 +157,3 @@ for i in range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD):
     vis.savefig(i, path=os.path.join(save_dir, "{}_{}_tar.png".format(DATASET, i)))
 
     
-########################################################################################################################
-#                                                       EVALUATION                                                     #
-########################################################################################################################
-# eval_epochs = range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD)
-# EVAL_EPOCH_DICT = {
-#     "mnist":[1,10,15],
-#     "fmnist":[1,25,50],
-#     "cifar10":[1,100,199]
-# }
-# eval_epochs = EVAL_EPOCH_DICT[DATASET]
-# evaluator = Evaluator(data_provider, projector)
-
-# for eval_epoch in eval_epochs:
-#     evaluator.save_epoch_eval(eval_epoch, 15, temporal_k=5, file_name="{}".format(EVALUATION_NAME))

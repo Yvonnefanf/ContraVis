@@ -205,6 +205,17 @@ class DVIProjector(Projector):
         self.vis_model.eval()
         print("Successfully load the DVI visualization model for iteration {}".format(iteration))
 
+class ContraProjector(Projector):
+    def __init__(self, vis_model, content_path, vis_model_name, device) -> None:
+        super().__init__(vis_model, content_path, vis_model_name, device)
+
+    def load(self, iteration):
+        file_path = os.path.join(self.content_path)
+        save_model = torch.load(file_path, map_location="cpu")
+        self.vis_model.load_state_dict(save_model["state_dict"])
+        self.vis_model.to(self.DEVICE)
+        self.vis_model.eval()
+        print("Successfully load the DVI visualization model for iteration {}".format(iteration))
 
 class TimeVisProjector(Projector):
     def __init__(self, vis_model, content_path, vis_model_name, device, verbose=0) -> None:

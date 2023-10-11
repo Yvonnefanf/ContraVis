@@ -35,8 +35,10 @@ from singleVis.utils import find_neighbor_preserving_rate
 VIS_METHOD = "DVI" # DeepVisualInsight
 
 
-TAR_PATH = "/home/yifan/dataset/resnet18_with_dropout/pairflip/cifar10/0"
+TAR_PATH = "/home/yifan/experiments/backdoor/resnet18_CIFAR10/experiment10"
 REF_PATH = "/home/yifan/dataset/clean/pairflip/cifar10/0"
+
+TAE_NET = "resnet18"
 
 ########################################################################################################################
 #                                                     LOAD PARAMETERS                                                  #
@@ -112,7 +114,7 @@ net = eval("subject_model.{}()".format(NET))
 ########################################################################################################################
 # Define data_provider
 #TODO
-TAE_NET = "resnet18_with_dropout"
+
 tar_net = eval("subject_model.{}()".format(TAE_NET)) 
 TAR_CONTENT_PATH = args.tar_path
 data_provider = NormalDataProvider(CONTENT_PATH, net, EPOCH_START, EPOCH_END, EPOCH_PERIOD, device=DEVICE, epoch_name='Epoch',classes=CLASSES,verbose=1)
@@ -167,7 +169,7 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     tar_data = tar_data_provider.train_representation(EPOCH_START)
     tar_data = tar_data.reshape(tar_data.shape[0],tar_data.shape[1])
     trans_trainer = TransformationTrainer(data_provider.train_representation(EPOCH_START),tar_data, DEVICE)
-    tarns_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train()
+    trans_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train(num_epochs=500)
 
     ##### build spatial graph
     spatial_cons = SpitalEdgeForContrastConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_mapped,tar_data_provider)
