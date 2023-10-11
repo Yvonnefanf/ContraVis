@@ -35,8 +35,11 @@ from singleVis.utils import find_neighbor_preserving_rate
 VIS_METHOD = "DVI" # DeepVisualInsight
 
 
-TAR_PATH = "/home/yifan/dataset/resnet18_with_dropout/pairflip/cifar10/0"
-REF_PATH = "/home/yifan/dataset/clean/pairflip/cifar10/0"
+# TAR_PATH = "/home/yifan/dataset/resnet18_with_dropout/pairflip/cifar10/0"
+REF_PATH = "/home/yifan/experiments/backdoor/resnet18_CIFAR10/experiment10"
+TAR_PATH = "/home/yifan/dataset/clean/pairflip/cifar10/0"
+strategy = 'backdoor'
+VIS_MODEL_NAME = 'Contravis_{}'.format(strategy) ### saved_as 
 
 ########################################################################################################################
 #                                                     LOAD PARAMETERS                                                  #
@@ -98,7 +101,7 @@ N_NEIGHBORS = VISUALIZATION_PARAMETER["N_NEIGHBORS"]
 PATIENT = VISUALIZATION_PARAMETER["PATIENT"]
 MAX_EPOCH = VISUALIZATION_PARAMETER["MAX_EPOCH"]
 
-VIS_MODEL_NAME = 'Contravis' ### saved_as 
+
 EVALUATION_NAME = VISUALIZATION_PARAMETER["EVALUATION_NAME"]
 
 # Define hyperparameters
@@ -112,7 +115,7 @@ net = eval("subject_model.{}()".format(NET))
 ########################################################################################################################
 # Define data_provider
 #TODO
-TAE_NET = "resnet18_with_dropout"
+TAE_NET = "resnet18"
 tar_net = eval("subject_model.{}()".format(TAE_NET)) 
 TAR_CONTENT_PATH = args.tar_path
 data_provider = NormalDataProvider(CONTENT_PATH, net, EPOCH_START, EPOCH_END, EPOCH_PERIOD, device=DEVICE, epoch_name='Epoch',classes=CLASSES,verbose=1)
@@ -164,10 +167,13 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     
 
     #### run transformation model
+
     tar_data = tar_data_provider.train_representation(EPOCH_START)
+    ref_data = data_provider.train_representation(EPOCH_START)
     tar_data = tar_data.reshape(tar_data.shape[0],tar_data.shape[1])
-    trans_trainer = TransformationTrainer(data_provider.train_representation(EPOCH_START),tar_data, DEVICE)
-    trans_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train(num_epochs=200)
+    ref_data = tar_data.reshape(tar_data.shape[0],ref_data.shape[1])
+    trans_trainer = TransformationTrainer(ref_data,tar_data, DEVICE)
+    trans_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train(num_epochs=500)
 
     ##### build spatial graph
     spatial_cons = SpitalEdgeForContrastConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_mapped,tar_data_provider)
@@ -208,7 +214,7 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
      ##### save the visulization model
     trainer.save(save_dir=save_dir, file_name="{}".format(VIS_MODEL_NAME))
     ##### save the transformation model
-    torch.save(trans_model, os.path.join(save_dir,'trans_model.m' ))
+    torch.save(trans_model, os.path.join(save_dir,"{}_{}".format(strategy,'trans_model.m') ))
 
 
     print("Finish epoch {}...".format(iteration))
@@ -218,32 +224,30 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
         param.requires_grad = False
     w_prev = dict(prev_model.named_parameters())
     
-
 ########################################################################################################################
 #                                                      VISUALIZATION                                                   #
 ########################################################################################################################
 
-# from singleVis.visualizer import visualizer
-# now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time())) 
-# vis = visualizer(data_provider, projector, 200, "tab10")
-# save_dir = os.path.join(data_provider.content_path, "img")
-# if not os.path.exists(save_dir):
-#     os.mkdir(save_dir)
-# for i in range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD):
-#     vis.savefig(i, path=os.path.join(save_dir, "{}_{}_{}_{}.png".format(DATASET, i, VIS_METHOD,now)))
+from singleVis.visualizer import visualizer
+now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time())) 
+vis = visualizer(data_provider, projector, 200, "tab10")
+save_dir = os.path.join(data_provider.content_path, "contraImg")
+if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+for i in range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD):
+    vis.savefig(i, path=os.path.join(save_dir, "{}_{}_ref.png".format(DATASET, i)))
 
-    
-########################################################################################################################
-#                                                       EVALUATION                                                     #
-########################################################################################################################
-# eval_epochs = range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD)
-# EVAL_EPOCH_DICT = {
-#     "mnist":[1,10,15],
-#     "fmnist":[1,25,50],
-#     "cifar10":[1,100,199]
-# }
-# eval_epochs = EVAL_EPOCH_DICT[DATASET]
-# evaluator = Evaluator(data_provider, projector)
+saved_dir = os.path.join(data_provider.model_path, "Epoch_{}".format(EPOCH_START))
+transed_model = torch.load(os.path.join(saved_dir,"{}_{}".format(strategy,'trans_model.m'))).to(DEVICE)
 
-# for eval_epoch in eval_epochs:
-#     evaluator.save_epoch_eval(eval_epoch, 15, temporal_k=5, file_name="{}".format(EVALUATION_NAME))
+
+from singleVis.visualizer_for_tar import visualizer
+now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time())) 
+vis = visualizer(data_provider, tar_data_provider, transed_model, projector, 200,DEVICE, "tab10")
+save_dir = os.path.join(data_provider.content_path, "contraImg")
+if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
+for i in range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD):
+    vis.savefig(i, path=os.path.join(save_dir, "{}_{}_tar.png".format(DATASET, i)))
+
+

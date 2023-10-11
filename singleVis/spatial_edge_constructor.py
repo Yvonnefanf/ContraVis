@@ -192,6 +192,7 @@ class SpitalEdgeForContrastConstructor(SpatialEdgeConstructor):
     def construct(self):
         # load reference and targte train data
         train_data = self.data_provider.train_representation(self.epoch)
+        train_data = train_data.reshape(train_data.shape[0],train_data.shape[1])
         
 
         # if self.b_n_epochs == 0:

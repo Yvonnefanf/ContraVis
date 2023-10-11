@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 import base64
+import json
 
 class VisualizerAbstractClass(ABC):
     @abstractmethod
@@ -118,6 +119,7 @@ class visualizer(VisualizerAbstractClass):
     def get_epoch_plot_measures(self, epoch):
         """get plot measure for visualization"""
         data = self.data_provider.train_representation(epoch)
+        data = data.reshape(data.shape[0],data.shape[1])
         embedded = self.projector.batch_project(epoch, data)
 
         ebd_min = np.min(embedded, axis=0)
@@ -202,7 +204,13 @@ class visualizer(VisualizerAbstractClass):
         # self.desc.set_text(desc)
 
         train_data = self.data_provider.train_representation(epoch)
-        train_labels = self.data_provider.train_labels(epoch)
+        train_data = train_data.reshape(train_data.shape[0],train_data.shape[1])
+        # train_labels = self.data_provider.train_labels(epoch)
+
+        with open(os.path.join(self.data_provider.content_path, 'clean_label.json'), "r") as f:
+            clean_label = json.load(f)
+        
+        train_labels = np.array(clean_label)
         pred = self.data_provider.get_pred(epoch, train_data)
         pred = pred.argmax(axis=1)
 

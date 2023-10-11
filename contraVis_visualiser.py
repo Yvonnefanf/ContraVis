@@ -9,22 +9,16 @@ import time
 import numpy as np
 import argparse
 
-from torch.utils.data import DataLoader
-from torch.utils.data import WeightedRandomSampler
 from umap.umap_ import find_ab_params
 from contrast.transfomration import *
 
-from singleVis.custom_weighted_random_sampler import CustomWeightedRandomSampler
 from singleVis.SingleVisualizationModel import VisModel
-from singleVis.losses import UmapLoss, ReconstructionLoss, TemporalLoss, DVILoss, SingleVisLoss, DummyTemporalLoss
-from singleVis.edge_dataset import DVIDataHandler
-from singleVis.trainer import DVITrainer
+from singleVis.losses import UmapLoss, ReconstructionLoss, SingleVisLoss
+
 from singleVis.data import NormalDataProvider
-# from singleVis.spatial_edge_constructor import SingleEpochSpatialEdgeConstructor
-from singleVis.spatial_edge_constructor import SpitalEdgeForContrastConstructor
+
 
 from singleVis.projector import DVIProjector
-from singleVis.utils import find_neighbor_preserving_rate
 
 ########################################################################################################################
 #                                                      PARAMETERS                                                   #
@@ -33,8 +27,13 @@ from singleVis.utils import find_neighbor_preserving_rate
 VIS_METHOD = "DVI" # DeepVisualInsight
 
 
-TAR_PATH = "/home/yifan/dataset/resnet18_with_dropout/pairflip/cifar10/0"
-REF_PATH = "/home/yifan/dataset/clean/pairflip/cifar10/0"
+# TAR_PATH = "/home/yifan/dataset/resnet18_with_dropout/pairflip/cifar10/0"
+# REF_PATH = "/home/yifan/dataset/clean/pairflip/cifar10/0"
+REF_PATH = "/home/yifan/experiments/backdoor/resnet18_CIFAR10/experiment10"
+TAR_PATH = "/home/yifan/dataset/clean/pairflip/cifar10/0"
+strategy = 'backdoor'
+
+VIS_MODEL_NAME = 'Contravis_{}'.format(strategy) ### saved_as 
 
 ########################################################################################################################
 #                                                     LOAD PARAMETERS                                                  #
@@ -96,7 +95,7 @@ N_NEIGHBORS = VISUALIZATION_PARAMETER["N_NEIGHBORS"]
 PATIENT = VISUALIZATION_PARAMETER["PATIENT"]
 MAX_EPOCH = VISUALIZATION_PARAMETER["MAX_EPOCH"]
 
-VIS_MODEL_NAME = 'Contravis' ### saved_as 
+
 EVALUATION_NAME = VISUALIZATION_PARAMETER["EVALUATION_NAME"]
 
 # Define hyperparameters
@@ -110,7 +109,7 @@ net = eval("subject_model.{}()".format(NET))
 ########################################################################################################################
 # Define data_provider
 #TODO
-TAE_NET = "resnet18_with_dropout"
+TAE_NET = "resnet18"
 tar_net = eval("subject_model.{}()".format(TAE_NET)) 
 TAR_CONTENT_PATH = args.tar_path
 data_provider = NormalDataProvider(CONTENT_PATH, net, EPOCH_START, EPOCH_END, EPOCH_PERIOD, device=DEVICE, epoch_name='Epoch',classes=CLASSES,verbose=1)
@@ -150,7 +149,7 @@ for i in range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD):
     vis.savefig(i, path=os.path.join(save_dir, "{}_{}_ref.png".format(DATASET, i)))
 
 saved_dir = os.path.join(data_provider.model_path, "Epoch_{}".format(EPOCH_START))
-transed_model = torch.load(os.path.join(saved_dir,'trans_model.m' )).to(DEVICE)
+transed_model = torch.load(os.path.join(saved_dir,"{}_{}".format(strategy,'trans_model.m'))).to(DEVICE)
 
 
 from singleVis.visualizer_for_tar import visualizer
