@@ -72,6 +72,7 @@ class SpatialEdgeConstructor(SpatialEdgeConstructorAbstractClass):
             knn_indices=knn_indices,
             knn_dists=knn_dists,
         )
+           
         return complex, sigmas, rhos, knn_indices
     
     def _construct_boundary_wise_complex(self, train_data, border_centers):
@@ -153,7 +154,7 @@ class SpatialEdgeConstructor(SpatialEdgeConstructorAbstractClass):
         return head, tail, weight
 
 
-    def _construct_edge_dataset(self, complex_ref, complex_tar, tw_complex):
+    def _construct_edge_dataset(self, complex_ref, complex_tar, tw_complex,offset=0):
         """
         Construct the mixed edge dataset combining three complexes.
         :param complex_ref: Complex for the reference data
@@ -162,14 +163,14 @@ class SpatialEdgeConstructor(SpatialEdgeConstructorAbstractClass):
         :return: edge_to, edge_from, weight
         """
 
-        def extract_from_complex(complex_data, n_epochs):
+        def extract_from_complex(complex_data, n_epochs,offset=0):
             # This internal function extracts needed information from the provided complex data
-            _, head, tail, weight, _ = get_graph_elements(complex_data, n_epochs)
+            _, head, tail, weight, _ = get_graph_elements(complex_data, n_epochs,offset)
             return head, tail, weight
 
         # Extract data from each complex
         ref_head, ref_tail, ref_weight = extract_from_complex(complex_ref, self.s_n_epochs)
-        tar_head, tar_tail, tar_weight = extract_from_complex(complex_tar, self.s_n_epochs)
+        tar_head, tar_tail, tar_weight = extract_from_complex(complex_tar, self.s_n_epochs,offset)
         tw_head, tw_tail, tw_weight = extract_from_complex(tw_complex, self.b_n_epochs)
 
         # Concatenate extracted data from all complexes
@@ -198,6 +199,38 @@ class SpitalEdgeForContrastConstructor(SpatialEdgeConstructor):
         # if self.b_n_epochs == 0:
         """if we do not consider the boundary sample"""
         complex,_,_,_ = self._construct_fuzzy_complex(train_data)
+        complex_tar, _, _, _ = self._construct_fuzzy_complex(self.trans_tar)
+        tw_complex,_,_,_ =self._construct_target_wise_complex(train_data, self.trans_tar)
+        edge_to, edge_from, weight = self._construct_edge_dataset(complex,complex_tar,tw_complex,offset=len(train_data))
+        feature_vectors = np.concatenate((train_data, self.trans_tar), axis=0)
+        attention_t = np.ones(feature_vectors.shape)
+        return edge_to, edge_from, weight, feature_vectors, attention_t
+
+
+class ProxyBasedSpitalEdgeForContrastConstructor(SpatialEdgeConstructor):
+    def __init__(self, data_provider, epoch, s_n_epochs, b_n_epochs, n_neighbors, transed_tar, ref_proxy, tar_proxy, tar_provider) -> None:
+        super().__init__(data_provider, epoch, s_n_epochs, b_n_epochs, n_neighbors)
+        self.epoch = epoch
+        self.trans_tar = transed_tar
+        self.tar_provider = tar_provider
+        self.ref_proxy = ref_proxy
+        self.tar_proxy = tar_proxy
+
+    def construct(self):
+        # load reference and targte train data
+        train_data = self.data_provider.train_representation(self.epoch)
+        train_data = train_data.reshape(train_data.shape[0],train_data.shape[1])
+        
+
+        # if self.b_n_epochs == 0:
+        """if we do not consider the boundary sample"""
+
+        complex,_,_,_ = self._construct_fuzzy_complex(train_data)
+
+        # build proxy-proxy-connection
+        proxy_proxy_complex, _, _, _ = self._construct_fuzzy_complex(self.ref_proxy)
+
+
         complex_tar,_,_,_ = self._construct_fuzzy_complex(self.trans_tar)
         tw_complex,_,_,_ =self._construct_target_wise_complex(train_data, self.trans_tar)
         edge_to, edge_from, weight = self._construct_edge_dataset(complex,complex_tar,tw_complex)
@@ -205,8 +238,35 @@ class SpitalEdgeForContrastConstructor(SpatialEdgeConstructor):
         attention_t = np.ones(feature_vectors.shape)
         return edge_to, edge_from, weight, feature_vectors, attention_t
 
+class SpitalEdgeForContrastUseOrgConstructor(SpatialEdgeConstructor):
+    """
+    compar to use transformed target,
+    we use original target train data to build tar complex
+    """
 
+    def __init__(self, data_provider, epoch, s_n_epochs, b_n_epochs, n_neighbors, transed_tar, tar_provider) -> None:
+        super().__init__(data_provider, epoch, s_n_epochs, b_n_epochs, n_neighbors)
+        self.epoch = epoch
+        self.trans_tar = transed_tar
+        self.tar_provider = tar_provider
 
+    def construct(self):
+        # load reference and targte train data
+        train_data = self.data_provider.train_representation(self.epoch)
+        train_data = train_data.reshape(train_data.shape[0],train_data.shape[1])
+        tar_train_data = self.tar_provider.train_representation(self.epoch)
+        tar_train_data = tar_train_data.reshape(train_data.shape[0],train_data.shape[1])
+        
+
+        # if self.b_n_epochs == 0:
+        """if we do not consider the boundary sample"""
+        complex,_,_,_ = self._construct_fuzzy_complex(train_data)
+        complex_tar, _, _, _ = self._construct_fuzzy_complex(tar_train_data)
+        tw_complex,_,_,_ =self._construct_target_wise_complex(train_data, self.trans_tar)
+        edge_to, edge_from, weight = self._construct_edge_dataset(complex,complex_tar,tw_complex,offset=len(train_data))
+        feature_vectors = np.concatenate((train_data, self.trans_tar), axis=0)
+        attention_t = np.ones(feature_vectors.shape)
+        return edge_to, edge_from, weight, feature_vectors, attention_t
 
 
 

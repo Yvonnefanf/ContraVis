@@ -11,7 +11,7 @@ from pynndescent import NNDescent
 import scipy
 
 
-def get_graph_elements(graph_, n_epochs):
+def get_graph_elements(graph_, n_epochs,offset=0):
     """
     gets elements of graphs, weights, and number of epochs per edge
     Parameters
@@ -37,8 +37,10 @@ def get_graph_elements(graph_, n_epochs):
     """
     ### should we remove redundancies () here??
     # graph_ = remove_redundant_edges(graph_)
+    print("offset",offset)
 
     graph = graph_.tocoo()
+
     # eliminate duplicate entries by summing them together
     graph.sum_duplicates()
     # number of vertices in dataset
@@ -55,8 +57,8 @@ def get_graph_elements(graph_, n_epochs):
         graph.data[graph.data < (graph.data.max() / float(n_epochs)) + 1e-3] = 0.0
         graph.eliminate_zeros()
 
-    head = graph.row
-    tail = graph.col
+    head = graph.row + offset
+    tail = graph.col + offset
     #! normalization
     # weight = graph.data*n_epochs
     weight = graph.data

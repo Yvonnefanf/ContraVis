@@ -131,6 +131,9 @@ class visualizer(VisualizerAbstractClass):
         data = self.transform_model.encoder(tar_tensor).cpu().detach().numpy()
    
         embedded = self.projector.batch_project(epoch, data)
+        
+
+        np.save(os.path.join(self.tar_data_provider.model_path, 'Epoch_{}'.format(epoch), 'embedding.npy' ), embedded)
 
         ebd_min = np.min(embedded, axis=0)
         ebd_max = np.max(embedded, axis=0)
@@ -343,7 +346,8 @@ class visualizer(VisualizerAbstractClass):
 
         # save first and them load
         fname = "Epoch" if self.data_provider.mode == "normal" else "Iteration"
-        save_path = os.path.join(self.data_provider.model_path, "{}_{}".format(fname, epoch), "bgimg.png")
+        save_path = os.path.join(self.tar_data_provider.model_path, "{}_{}".format(fname, epoch), "bgimg.png")
+        print("saved as",save_path)
         plt.savefig(save_path, format='png',bbox_inches='tight',pad_inches=0.0)
         with open(save_path, 'rb') as img_f:
             img_stream = img_f.read()

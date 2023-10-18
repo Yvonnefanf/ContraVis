@@ -23,7 +23,8 @@ from singleVis.edge_dataset import DVIDataHandler
 from singleVis.trainer import DVITrainer
 from singleVis.data import NormalDataProvider
 # from singleVis.spatial_edge_constructor import SingleEpochSpatialEdgeConstructor
-from singleVis.spatial_edge_constructor import SpitalEdgeForContrastConstructor
+from singleVis.spatial_edge_constructor import SpitalEdgeForContrastUseOrgConstructor
+from contrast.aligned_skeleton_generator import AlignedSkeletonGenerator
 
 from singleVis.projector import DVIProjector
 from singleVis.utils import find_neighbor_preserving_rate
@@ -163,16 +164,21 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=.1)
     # Define Edge dataset
     t0 = time.time()
+
+    aligned_skeleton_generator = AlignedSkeletonGenerator(data_provider, tar_data_provider, EPOCH_START,EPOCH_START)
+
+    ref_proxy , tar_proxy = aligned_skeleton_generator.generate_proxies()
     
+
 
     #### run transformation model
     tar_data = tar_data_provider.train_representation(EPOCH_START)
     tar_data = tar_data.reshape(tar_data.shape[0],tar_data.shape[1])
-    trans_trainer = TransformationTrainer(data_provider.train_representation(EPOCH_START),tar_data,data_provider,tar_data_provider,EPOCH_START,EPOCH_START, DEVICE)
+    trans_trainer = TransformationTrainer(data_provider.train_representation(EPOCH_START),tar_data,ref_proxy, tar_proxy, data_provider, tar_data_provider,EPOCH_START,EPOCH_START, DEVICE)
     trans_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train(num_epochs=500)
 
     ##### build spatial graph
-    spatial_cons = SpitalEdgeForContrastConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_mapped,tar_data_provider)
+    spatial_cons = SpitalEdgeForContrastUseOrgConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_mapped,tar_data_provider)
     edge_to, edge_from, probs, feature_vectors, attention = spatial_cons.construct()
     t1 = time.time()
 

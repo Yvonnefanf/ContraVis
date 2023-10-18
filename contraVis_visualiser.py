@@ -155,3 +155,5 @@ if not os.path.exists(save_dir):
     os.mkdir(save_dir)
 for i in range(EPOCH_START, EPOCH_END+1, EPOCH_PERIOD):
     vis.savefig(i, path=os.path.join(save_dir, "{}_{}_tar.png".format(DATASET, i)))
+
+print(save_dir)

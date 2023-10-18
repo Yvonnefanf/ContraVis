@@ -8,6 +8,12 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
+import sys
+sys.path.append('..')
+import torch
+from contrast.losses import KNNOverlapLoss, CKALoss, PredictionLoss, ConfidenceLoss
+
+
 
 # Define the autoencoder
 class Autoencoder(nn.Module):
@@ -36,15 +42,19 @@ class Autoencoder(nn.Module):
         return x
     
 class TransformationTrainer():
-    def __init__(self,ref_data,tar_data,ref_provider,tar_provider,ref_epoch, tar_epoch,device) -> None:
+    def __init__(self,ref_data,tar_data,ref_proxy, tar_proxy, ref_provider,tar_provider,ref_epoch,tar_epoch,device) -> None:
         self.ref_data = ref_data
         self.tar_data = tar_data
+        self.ref_proxy = ref_proxy
+        self.tar_proxy = tar_proxy
         self.ref_provider = ref_provider
         self.tar_provider = tar_provider
         self.ref_epoch = ref_epoch
         self.tar_epoch= tar_epoch
         self.device = device
         self.model = Autoencoder().to(device)
+        self.ref_data = self.ref_data.reshape(self.ref_data.shape[0],self.ref_data.shape[1])
+        self.tar_data = self.tar_data.reshape(self.tar_data.shape[0],self.tar_data.shape[1])
         self.tar_pred = self.tar_provider.get_pred(self.tar_epoch, self.tar_data)
         self.ref_pred = self.ref_provider.get_pred(self.ref_epoch, self.ref_data)
     
@@ -100,10 +110,14 @@ class TransformationTrainer():
         # Assume tar_tensor and ref_tensor are your data in PyTorch tensor format
         self.align_ref_data()
         print("finished aligned")
-        tar_tensor = torch.tensor(self.tar_data, dtype=torch.float32).cuda() 
-        ref_tensor = torch.tensor(self.ref_data, dtype=torch.float32).cuda()
+        self.tar_train = np.concatenate((self.tar_data, self.tar_proxy),axis=0)
+        self.ref_train = np.concatenate((self.ref_data, self.ref_proxy),axis=0)
+        tar_tensor = torch.tensor(self.tar_train, dtype=torch.float32).cuda() 
+        ref_tensor = torch.tensor(self.ref_train, dtype=torch.float32).cuda()
         tar_tensor = tar_tensor.to(self.device)
         ref_tensor = ref_tensor.to(self.device)
+        # knn_overlap_loss = KNNOverlapLoss(k=15)
+
         # Train the autoencoder
         for epoch in range(num_epochs):
             self.model.train()
@@ -120,6 +134,7 @@ class TransformationTrainer():
 
             # Combine the losses
             loss = reconstruction_loss + lambda_translation * translation_loss
+            # + lambda_knn * (knn_loss_encoder + knn_loss_decoder) 
             # Backward pass and optimization
             loss.backward()
             optimizer.step()
