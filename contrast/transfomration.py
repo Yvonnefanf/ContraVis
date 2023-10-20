@@ -145,10 +145,16 @@ class TransformationTrainer():
         # To get the mapped version of tar
         tar_mapped = self.model.encoder(tar_tensor).cpu().detach().numpy()
 
+        tar_data_shape = self.tar_data.shape[0]
+        tar_data_mapped = tar_mapped[:tar_data_shape]
+        tar_proxy_mapped = tar_mapped[tar_data_shape:]
+
+        
+
         # To get ref back from the mapped tar
         ref_reconstructed = self.model.decoder(torch.tensor(tar_mapped).to(self.device)).cpu().detach().numpy()
 
-        return self.model, tar_mapped, ref_reconstructed
+        return self.model, tar_data_mapped, tar_proxy_mapped, ref_reconstructed
     
 
     def compute_neighbors(self, data, n_neighbors=15):

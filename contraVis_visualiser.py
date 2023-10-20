@@ -25,10 +25,11 @@ from singleVis.projector import DVIProjector
 """This serve as an example of DeepVisualInsight implementation in pytorch."""
 VIS_METHOD = "DVI" # DeepVisualInsight
 
-TAR_PATH = "/home/yifan/experiments/backdoor/resnet18_CIFAR10/experiment10"
+# TAR_PATH = "/home/yifan/experiments/backdoor/resnet18_CIFAR10/experiment10" # backdoor
+TAR_PATH = '/home/yifan/dataset/resnet18_with_dropout/pairflip/cifar10/0' # dropout
 REF_PATH = "/home/yifan/dataset/clean/pairflip/cifar10/0"
 
-TAE_NET = "resnet18"
+
 
 ########################################################################################################################
 #                                                     LOAD PARAMETERS                                                  #
@@ -45,11 +46,17 @@ parser.add_argument('--preprocess', type=int,default=0)
 args = parser.parse_args()
 
 CONTENT_PATH = args.content_path
+TARGET_PATH = args.tar_path
 sys.path.append(CONTENT_PATH)
 with open(os.path.join(CONTENT_PATH, "config.json"), "r") as f:
     config = json.load(f)
 config = config[VIS_METHOD]
 
+with open(os.path.join(TARGET_PATH, "config.json"), "r") as f:
+    tarConfig = json.load(f)
+tarConfig = tarConfig[VIS_METHOD]
+
+TAR_NET = tarConfig["TRAINING"]["NET"]
 # record output information
 # now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time())) 
 # sys.stdout = open(os.path.join(CONTENT_PATH, now+".txt"), "w")
@@ -105,7 +112,7 @@ net = eval("subject_model.{}()".format(NET))
 # Define data_provider
 #TODO
 
-tar_net = eval("subject_model.{}()".format(TAE_NET)) 
+tar_net = eval("subject_model.{}()".format(TAR_NET)) 
 TAR_CONTENT_PATH = args.tar_path
 data_provider = NormalDataProvider(CONTENT_PATH, net, EPOCH_START, EPOCH_END, EPOCH_PERIOD, device=DEVICE, epoch_name='Epoch',classes=CLASSES,verbose=1)
 tar_data_provider = NormalDataProvider(TAR_CONTENT_PATH, tar_net, EPOCH_START, EPOCH_END, EPOCH_PERIOD, device=DEVICE, epoch_name='Epoch',classes=CLASSES,verbose=1)

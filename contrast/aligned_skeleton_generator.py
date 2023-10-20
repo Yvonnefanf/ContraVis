@@ -16,7 +16,7 @@ The item in skeleton
 """
 
 class AlignedSkeletonGenerator(AlignedSkeletonGeneratorAbstractClass):
-    def __init__(self, ref_data_provider, tar_data_provider, REF_EPOCH, TAR_EPOCH,max_depth=10,min_cluster_size=200) -> None:
+    def __init__(self, ref_data_provider, tar_data_provider, REF_EPOCH, TAR_EPOCH,max_depth=10,min_cluster_size=800) -> None:
         self.ref_data_provider = ref_data_provider
         self.tar_data_provider = tar_data_provider
         self.REF_EPOCH = REF_EPOCH

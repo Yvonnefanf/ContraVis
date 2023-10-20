@@ -23,7 +23,7 @@ from singleVis.edge_dataset import DVIDataHandler
 from singleVis.trainer import DVITrainer
 from singleVis.data import NormalDataProvider
 # from singleVis.spatial_edge_constructor import SingleEpochSpatialEdgeConstructor
-from singleVis.spatial_edge_constructor import SpitalEdgeForContrastUseOrgConstructor
+from singleVis.spatial_edge_constructor import ProxyBasedSpitalEdgeForContrastConstructor
 from contrast.aligned_skeleton_generator import AlignedSkeletonGenerator
 
 from singleVis.projector import DVIProjector
@@ -36,10 +36,10 @@ from singleVis.utils import find_neighbor_preserving_rate
 VIS_METHOD = "DVI" # DeepVisualInsight
 
 
-TAR_PATH = "/home/yifan/experiments/backdoor/resnet18_CIFAR10/experiment10"
+# TAR_PATH = "/home/yifan/experiments/backdoor/resnet18_CIFAR10/experiment10" #backdoor
+TAR_PATH = '/home/yifan/dataset/resnet18_with_dropout/pairflip/cifar10/0' # dropout
 REF_PATH = "/home/yifan/dataset/clean/pairflip/cifar10/0"
 
-TAE_NET = "resnet18"
 
 ########################################################################################################################
 #                                                     LOAD PARAMETERS                                                  #
@@ -56,11 +56,17 @@ parser.add_argument('--preprocess', type=int,default=0)
 args = parser.parse_args()
 
 CONTENT_PATH = args.content_path
+TARGET_PATH = args.tar_path
 sys.path.append(CONTENT_PATH)
 with open(os.path.join(CONTENT_PATH, "config.json"), "r") as f:
     config = json.load(f)
 config = config[VIS_METHOD]
 
+with open(os.path.join(TARGET_PATH, "config.json"), "r") as f:
+    tarConfig = json.load(f)
+tarConfig = tarConfig[VIS_METHOD]
+
+TAR_NET = tarConfig["TRAINING"]["NET"]
 # record output information
 # now = time.strftime("%Y-%m-%d-%H_%M_%S", time.localtime(time.time())) 
 # sys.stdout = open(os.path.join(CONTENT_PATH, now+".txt"), "w")
@@ -116,7 +122,7 @@ net = eval("subject_model.{}()".format(NET))
 # Define data_provider
 #TODO
 
-tar_net = eval("subject_model.{}()".format(TAE_NET)) 
+tar_net = eval("subject_model.{}()".format(TAR_NET)) 
 TAR_CONTENT_PATH = args.tar_path
 data_provider = NormalDataProvider(CONTENT_PATH, net, EPOCH_START, EPOCH_END, EPOCH_PERIOD, device=DEVICE, epoch_name='Epoch',classes=CLASSES,verbose=1)
 tar_data_provider = NormalDataProvider(TAR_CONTENT_PATH, tar_net, EPOCH_START, EPOCH_END, EPOCH_PERIOD, device=DEVICE, epoch_name='Epoch',classes=CLASSES,verbose=1)
@@ -165,7 +171,7 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     # Define Edge dataset
     t0 = time.time()
 
-    aligned_skeleton_generator = AlignedSkeletonGenerator(data_provider, tar_data_provider, EPOCH_START,EPOCH_START)
+    aligned_skeleton_generator = AlignedSkeletonGenerator(data_provider, tar_data_provider, EPOCH_START,EPOCH_START,min_cluster_size=300)
 
     ref_proxy , tar_proxy = aligned_skeleton_generator.generate_proxies()
     
@@ -175,10 +181,10 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     tar_data = tar_data_provider.train_representation(EPOCH_START)
     tar_data = tar_data.reshape(tar_data.shape[0],tar_data.shape[1])
     trans_trainer = TransformationTrainer(data_provider.train_representation(EPOCH_START),tar_data,ref_proxy, tar_proxy, data_provider, tar_data_provider,EPOCH_START,EPOCH_START, DEVICE)
-    trans_model,tar_mapped,ref_reconstructed  = trans_trainer.transformation_train(num_epochs=500)
+    trans_model,tar_data_mapped,tar_proxy_mapped,ref_reconstructed  = trans_trainer.transformation_train(num_epochs=500)
 
     ##### build spatial graph
-    spatial_cons = SpitalEdgeForContrastUseOrgConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_mapped,tar_data_provider)
+    spatial_cons = ProxyBasedSpitalEdgeForContrastConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_data_mapped,np.array(ref_proxy), np.array(tar_proxy),tar_proxy_mapped,tar_data_provider)
     edge_to, edge_from, probs, feature_vectors, attention = spatial_cons.construct()
     t1 = time.time()
 
