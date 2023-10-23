@@ -23,7 +23,7 @@ from singleVis.edge_dataset import DVIDataHandler
 from singleVis.trainer import DVITrainer
 from singleVis.data import NormalDataProvider
 # from singleVis.spatial_edge_constructor import SingleEpochSpatialEdgeConstructor
-from singleVis.spatial_edge_constructor import ProxyBasedSpitalEdgeForContrastConstructor
+from singleVis.spatial_edge_constructor import ProxyBasedSpitalEdgeForContrastConstructor,ProxyBasedLowComplexSpitalEdgeForContrastConstructor
 from contrast.aligned_skeleton_generator import AlignedSkeletonGenerator
 
 from singleVis.projector import DVIProjector
@@ -171,7 +171,7 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     # Define Edge dataset
     t0 = time.time()
 
-    aligned_skeleton_generator = AlignedSkeletonGenerator(data_provider, tar_data_provider, EPOCH_START,EPOCH_START,min_cluster_size=300)
+    aligned_skeleton_generator = AlignedSkeletonGenerator(data_provider, tar_data_provider, EPOCH_START,EPOCH_START,min_cluster_size=100)
 
     ref_proxy , tar_proxy = aligned_skeleton_generator.generate_proxies()
     
@@ -184,7 +184,7 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     trans_model,tar_data_mapped,tar_proxy_mapped,ref_reconstructed  = trans_trainer.transformation_train(num_epochs=500)
 
     ##### build spatial graph
-    spatial_cons = ProxyBasedSpitalEdgeForContrastConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_data_mapped,np.array(ref_proxy), np.array(tar_proxy),tar_proxy_mapped,tar_data_provider)
+    spatial_cons = ProxyBasedLowComplexSpitalEdgeForContrastConstructor(data_provider, iteration, S_N_EPOCHS, B_N_EPOCHS, N_NEIGHBORS,tar_data_mapped,np.array(ref_proxy), np.array(tar_proxy),tar_proxy_mapped,tar_data_provider,1)
     edge_to, edge_from, probs, feature_vectors, attention = spatial_cons.construct()
     t1 = time.time()
 

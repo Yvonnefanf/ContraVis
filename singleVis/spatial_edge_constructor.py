@@ -152,6 +152,22 @@ class SpatialEdgeConstructor(SpatialEdgeConstructorAbstractClass):
             tail = np.concatenate((vr_tail, bw_tail), axis=0)
             weight = np.concatenate((vr_weight, bw_weight), axis=0)
         return head, tail, weight
+    
+    def _construct_single_complex_dataset(self, complex, offset):
+        """
+        Construct the edge dataset for one complex
+        """
+
+        def extract_from_complex(complex_data, n_epochs,offset=0):
+            # This internal function extracts needed information from the provided complex data
+            _, head, tail, weight, _ = get_graph_elements(complex_data, n_epochs,offset)
+            return head, tail, weight
+        
+        head, tail, weight = extract_from_complex(complex, self.s_n_epochs,offset)
+       
+
+        return head, tail, weight
+
 
 
     def _construct_edge_dataset(self, complex_ref, complex_tar, tw_complex,offset=0):
@@ -266,6 +282,105 @@ class ProxyBasedSpitalEdgeForContrastConstructor(SpatialEdgeConstructor):
         weight = np.concatenate((weight, proxy_weights))
 
         feature_vectors = np.concatenate((train_data, self.trans_tar,self.ref_proxy, self.trans_tar_proxy), axis=0)
+        # =============================================== proxy ===========================================//
+        attention_t = np.ones(feature_vectors.shape)
+        return edge_to, edge_from, weight, feature_vectors, attention_t
+
+
+class ProxyBasedLowComplexSpitalEdgeForContrastConstructor(SpatialEdgeConstructor):
+    def __init__(self, data_provider, epoch, s_n_epochs, b_n_epochs, n_neighbors, transed_tar, ref_proxy, tar_proxy, trans_tar_proxy, tar_provider, comp=0) -> None:
+        super().__init__(data_provider, epoch, s_n_epochs, b_n_epochs, n_neighbors)
+        self.epoch = epoch
+        self.trans_tar = transed_tar
+        self.tar_provider = tar_provider
+        self.ref_proxy = ref_proxy
+        self.tar_proxy = tar_proxy
+        self.trans_tar_proxy = trans_tar_proxy
+        self.comp = comp
+    
+    def _find_nearest_proxy(self, train_data, proxy):
+        nearest_neighbor = NearestNeighbors(n_neighbors=1).fit(proxy)
+        # find nearest proxy for each training data
+        distances, indices = nearest_neighbor.kneighbors(train_data)
+        return distances, indices
+
+    def construct(self):
+        # load reference and targte train data
+        train_data = self.data_provider.train_representation(self.epoch)
+        train_data = train_data.reshape(train_data.shape[0],train_data.shape[1])
+        tar_train_data = self.tar_provider.train_representation(self.epoch)
+        tar_train_data = tar_train_data.reshape(tar_train_data.shape[0],tar_train_data.shape[1])
+
+        ###### previous consider each points k nn ##########################################
+        
+        # tw_complex,_,_,_ =self._construct_target_wise_complex(train_data, self.trans_tar)
+        ###### previous consider each points k nn ##########################################
+
+        # if self.b_n_epochs == 0:
+        """if we do not consider the boundary sample"""
+        ###### ref proxy-proxy-connection
+        # concise the index of ref_proxy and trans_tar_proxy
+        ref_proxy_start_idx = train_data.shape[0] + self.trans_tar.shape[0]
+        ref_proxy_end_idx = ref_proxy_start_idx + self.ref_proxy.shape[0]
+        complex_ref_proxy,_,_,_ = self._construct_fuzzy_complex(self.ref_proxy)
+        rp_edge_to, rp_edge_from, rp_weight = self._construct_single_complex_dataset(complex_ref_proxy, ref_proxy_start_idx)
+
+        ###### tar proxy-proxy-connnection
+        complex_tar_proxy,_,_,_ = self._construct_fuzzy_complex(self.tar_proxy)
+        tp_edge_to, tp_edge_from, tp_weight = self._construct_single_complex_dataset(complex_tar_proxy, ref_proxy_end_idx)
+
+        ####### ref proxy-sample-connection for each ref train data find its nearest proxy
+        nearest_proxy_distances, nearest_proxy_indices = self._find_nearest_proxy(train_data, self.ref_proxy)
+        ref_train_data_indices = np.arange(len(train_data))
+        rps_edge_from = ref_train_data_indices
+        rps_edge_to = ref_proxy_start_idx + nearest_proxy_indices.squeeze()
+        rps_weight = 1.0 / (nearest_proxy_distances.squeeze() + 1e-5)
+
+        ####### tar proxy-sample-connection for each ref train data find its nearest proxy
+        nearest_tar_proxy_distances, nearest_tar_proxy_indices = self._find_nearest_proxy(tar_train_data, self.tar_proxy)
+        tar_train_data_indices = np.arange(len(tar_train_data))
+        tps_edge_from = tar_train_data_indices + len(train_data)
+        tps_edge_to = ref_proxy_end_idx + nearest_tar_proxy_indices.squeeze()
+        tps_weight = 1.0 / (nearest_tar_proxy_distances.squeeze() + 1e-5)
+
+
+        edge_from = np.concatenate((rp_edge_from, tp_edge_from, rps_edge_from, tps_edge_from), axis=0)
+        edge_to = np.concatenate((rp_edge_to, tp_edge_to, rps_edge_to, tps_edge_to), axis=0)
+        weight = np.concatenate((rp_weight, tp_weight, rps_weight, tps_weight), axis=0)
+
+
+        # =============================================== proxy aligned ===========================================//
+
+        trans_tar_proxy_start_idx = ref_proxy_end_idx
+        trans_tar_proxy_end_idx = trans_tar_proxy_start_idx + self.trans_tar_proxy.shape[0]
+
+        # constract edge for ref_proxy and trans_tar_proxy
+        proxy_edge_from = np.arange(ref_proxy_start_idx, ref_proxy_end_idx)
+        proxy_edge_to = np.arange(trans_tar_proxy_start_idx, trans_tar_proxy_end_idx)
+
+        # calculalte
+        mean_weight = np.mean(weight)
+        std_weight = np.std(weight)
+        big_weight = mean_weight + 1.2 * std_weight
+        print("big weight is:", big_weight)
+      
+        proxy_weights = np.ones_like(proxy_edge_from) * big_weight
+
+        # combine edge_to, edge_from, weight 中
+        edge_to = np.concatenate((edge_to, proxy_edge_to))
+        edge_from = np.concatenate((edge_from, proxy_edge_from))
+        weight = np.concatenate((weight, proxy_weights))
+
+        if self.comp == 1:
+            complex,_,_,_ = self._construct_fuzzy_complex(train_data)
+            complex_tar,_,_,_ = self._construct_fuzzy_complex(tar_train_data)
+            comp_edge_to, comp_edge_from, comp_weight = self._construct_edge_dataset(complex,complex_tar,None,offset=len(train_data))
+            edge_to = np.concatenate((edge_to, comp_edge_to))
+            edge_from = np.concatenate((edge_from, comp_edge_from))
+            weight = np.concatenate((weight, comp_weight))
+
+
+        feature_vectors = np.concatenate((train_data, self.trans_tar, self.ref_proxy, self.trans_tar_proxy), axis=0)
         # =============================================== proxy ===========================================//
         attention_t = np.ones(feature_vectors.shape)
         return edge_to, edge_from, weight, feature_vectors, attention_t

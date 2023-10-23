@@ -115,8 +115,9 @@ class Evaluator(EvaluatorAbstractClass):
         new_pred = self.data_provider.get_pred(epoch, inv_data).argmax(axis=1)
 
         val = evaluate_inv_accu(pred, new_pred)
+        err_num = np.sum(new_pred != pred) 
         if self.verbose:
-            print("#train# PPR: {:.2f} in epoch {:d}".format(val, epoch))
+            print("#train# PPR: {:.2f} in epoch {:d},error number:{}".format(val, epoch, err_num))
         return val
 
     def eval_inv_test(self, epoch):
