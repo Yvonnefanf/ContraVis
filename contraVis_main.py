@@ -171,7 +171,7 @@ for iteration in range(EPOCH_START, EPOCH_END+EPOCH_PERIOD, EPOCH_PERIOD):
     # Define Edge dataset
     t0 = time.time()
 
-    aligned_skeleton_generator = AlignedSkeletonGenerator(data_provider, tar_data_provider, EPOCH_START,EPOCH_START,min_cluster_size=100)
+    aligned_skeleton_generator = AlignedSkeletonGenerator(data_provider, tar_data_provider, EPOCH_START,EPOCH_START,min_cluster_size=500)
 
     ref_proxy , tar_proxy = aligned_skeleton_generator.generate_proxies()
     
