@@ -50,9 +50,6 @@ class SemanticDistanceCalculator(SemanticDistacneCalculatorAbstractClass):
         self.tar_knn_dists, self.tar_knn_indices = self.k_nearest_neibour(self.tar_data)
 
        
-
-
-    
     # calculate the cosine similarity of 2 vectors
     def cosine_similarity(self, u, v):
         return np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v))
@@ -98,7 +95,7 @@ class SemanticDistanceCalculator(SemanticDistacneCalculatorAbstractClass):
 
         relative_cos_similarity = self.cosine_similarity(ref_weighted_pred, tar_weighted_pred)
 
-        print("relative_cos_similarity",relative_cos_similarity,"cos_similiarty",cos_similiarty )
+        # print("relative_cos_similarity",relative_cos_similarity,"cos_similiarty",cos_similiarty )
         return relative_cos_similarity+ cos_similiarty, cos_similiarty, relative_cos_similarity
 
 
