@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import MinMaxScaler
+import sys
+sys.path.append('..')
+from contrast.aligned_skeleton_generator import SemanticDistanceCalculator
 
 class AlignedSkeletonGeneratorAbstractClass(ABC):
     @abstractmethod
@@ -29,6 +32,8 @@ class AlignedSkeletonGenerator(AlignedSkeletonGeneratorAbstractClass):
         self.min_cluster_size = min_cluster_size
 
 
+
+
     def gen_center(self,data,k=10):
         """
         use keans 
@@ -48,41 +53,6 @@ class AlignedSkeletonGenerator(AlignedSkeletonGeneratorAbstractClass):
                 radii.append(0)
         
         return centers,labels,radii
-    
-
-    # def align_centers_by_prediction(self, centers, predictions):
-    #     # Get the predicted class for each center
-    #     pred_classes = [np.argmax(pred) for pred in predictions]
-    
-    #     # Sort centers based on predicted classes
-    #     sorted_indices = np.argsort(pred_classes)
-    
-    #     return [centers[i] for i in sorted_indices]
-
-
-    # def init_centers(self):
-    #     # get reference and target representations center: ref_centers_c tar_centers_c
-    #     ref_centers_c, _, ref_radii_c = self.gen_center(self.ref_data,k=1)
-    #     tar_centers_c, _, tar_radii_c = self.gen_center(self.tar_data,k=1)
-
-    #     ref_centers_n, ref_labels,ref_radii_n = self.gen_center(self.ref_data,k=10)
-    #     tar_centers_n, tar_labels,tar_radii_n = self.gen_center(self.tar_data,k=10)
-
-
-    #     ref_c_pred = self.ref_data_provider.get_pred(self.REF_EPOCH, ref_centers_n)
-    #     tar_c_pred = self.tar_data_provider.get_pred(self.TAR_EPOCH, tar_centers_n)
-
-    #     ref_centers_n = self.align_centers_by_prediction(ref_centers_n, ref_c_pred)
-    #     tar_centers_n = self.align_centers_by_prediction(tar_centers_n, tar_c_pred)
-        
-    #     ref_centers = np.concatenate((ref_centers_c,ref_centers_n ),axis=0)
-    #     tar_centers = np.concatenate((tar_centers_c,tar_centers_n),axis=0)
-        
-    #     p1 = self.ref_data_provider.get_pred(self.REF_EPOCH, ref_centers).argmax(axis=1)
-    #     p2 = self.tar_data_provider.get_pred(self.TAR_EPOCH, tar_centers).argmax(axis=1)
-    #     print(ref_centers.shape, tar_centers.shape,p1,p2 )
-
-    #     return ref_centers,tar_centers
     
     def compute_center(self, data):
         """Compute the center (mean) of the data."""
